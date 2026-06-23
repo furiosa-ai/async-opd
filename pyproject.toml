@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=77.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "async-opd"
+version = "0.1.0"
+description = "On-policy distillation, GRPO RL, and SFT pipeline for language models"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+authors = [
+    {name = "FuriosaAI"},
+]
+keywords = ["distillation", "rl", "grpo", "language-models", "vllm", "fsdp"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "torch>=2.9.1",
+    "transformers>=4.57.6",
+    "vllm>=0.16.0,<0.17.0",
+    "pandas",
+    "numpy",
+    "pyzmq",
+    "flash-attn>=2.8.3",
+    "datasets",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-xdist",
+    "nbformat",
+    "nbclient",
+    "jupyter",
+    "seaborn",
+    "matplotlib",
+]
+logging = [
+    "clearml",
+    "wandb",
+]
+ray = [
+    "ray[default]",
+]
+
+[project.urls]
+Repository = "https://github.com/furiosa-ai/async-opd"
+
+[project.scripts]
+opd-train = "opd.cli.train:main"
+opd-eval = "opd.cli.eval:main"
+
+[tool.setuptools.packages.find]
+include = ["opd*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

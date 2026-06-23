@@ -1,0 +1,68 @@
+# GRPO on GSM8K with Qwen2.5-0.5B-Instruct — 4 GPU version (H100)
+#
+# GPU 0: teacher + rollout 0 (colocated, 0.5B model)
+# GPU 1: rollout 1
+# GPU 2-3: trainer (2-GPU FSDP)
+model:
+  path: Qwen/Qwen2.5-0.5B-Instruct
+teacher:
+  path: Qwen/Qwen2.5-0.5B-Instruct
+  gpu_ids: '0'
+  vllm:
+    tensor_parallel_size: 1
+    n_logprobs: 1
+    max_model_len: 2048
+    gpu_memory_utilization: 0.4
+    enforce_eager: true
+data:
+  train_files: hf:openai/gsm8k:main
+  val_files: hf:openai/gsm8k:main:test
+  prompt_template: '{problem}
+
+    Let''s think step by step and output the final answer after ####.'
+  answer_key: answer
+  enable_thinking: false
+  prompt_key: question
+  max_prompt_length: 512
+  max_response_length: 1024
+rollout:
+  gpu_ids: 0,1
+  n_gpus: 2
+  temperature: 1.0
+  vllm:
+    max_model_len: 1536
+    max_num_seqs: 1024
+    gpu_memory_utilization: 0.35
+trainer:
+  gpu_ids: 2,3
+  n_gpus: 2
+  batch_size: 48
+  micro_batch_size: 8
+  use_torch_compile: true
+  total_steps: 600
+  total_epochs: 15
+  save_freq: -1
+  optim:
+    lr: 1e-6
+    lr_decay_style: constant
+    weight_decay: 0.01
+algorithm:
+  mode: grpo
+  grpo:
+    group_size: 5
+    clip_eps: 0.2
+    kl_beta: 0.001
+    kl_type: low_var_kl
+    clip_ratio_c: 3.0
+    reward_fn: correctness
+pipeline:
+  n_step_off:
+    step_off: 2
+eval:
+  freq: 50
+  mode:
+  - post_allgpu
+  before_train: false
+  n_samples: 1
+weight_sync:
+  backend: nccl

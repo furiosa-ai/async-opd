@@ -1,0 +1,107 @@
+# Advanced OPD example: code-training data with fully async multi-sample PG-KL and code post-eval datasets.
+# Uses hf:sungyub/eurus-2-code-verl and HumanEval+/MBPP+/LiveCodeBench-style post-eval configuration.
+# Review dataset and benchmark licenses/terms before redistributing derived artifacts or scores.
+model:
+  path: Qwen/Qwen3-1.7B-Base
+teacher:
+  path: Qwen/Qwen3-30B-A3B-Instruct-2507
+  gpu_ids: '0'
+  n_gpus: 1
+  scoring_batch_size: 8
+  vllm:
+    tensor_parallel_size: 1
+    n_logprobs: 64
+    max_model_len: 18688
+    max_num_seqs: 16
+    gpu_memory_utilization: 0.4
+    enforce_eager: true
+data:
+  train_files: hf:sungyub/eurus-2-code-verl
+  prompt_key: prompt
+  prompt_source: last_user_content
+  filter_key: ability
+  filter_value: code
+  prompt_template: '{problem}
+
+    Write Python code to solve the problem. Present the code in ```python
+
+    Your code
+
+    ``` at the end. You need to think first then write the Python code.'
+  enable_thinking: false
+  max_prompt_length: 2048
+  max_response_length: 16384
+  post_eval_datasets:
+  - type: code
+    benchmark: humaneval_plus
+    eval_n_samples: 4
+    eval_temperature: 1.0
+    max_response_length: 16384
+  - type: code
+    benchmark: mbpp_plus
+    eval_n_samples: 4
+    eval_temperature: 1.0
+    max_response_length: 16384
+  - type: code
+    benchmark: lcb_v6
+    release: release_v6
+    date_start: '2025-02-01'
+    date_end: '2025-05-31'
+    eval_n_samples: 4
+    eval_temperature: 1.0
+    max_response_length: 16384
+rollout:
+  gpu_ids: 1,2,3,4
+  n_gpus: 4
+  pin_cpu_affinity: true
+  bind_numa_memory: true
+  temperature: 1.0
+  top_p: 1.0
+  top_k: -1
+  vllm:
+    tensor_parallel_size: 1
+    max_model_len: 18432
+    max_num_seqs: 512
+    gpu_memory_utilization: 0.85
+    enforce_eager: false
+trainer:
+  gpu_ids: 5,6,7
+  n_gpus: 3
+  batch_size: 256
+  micro_batch_size: 8
+  mini_batch_size: 64
+  use_torch_compile: true
+  total_steps: 100
+  total_epochs: 10
+  save_freq: 5
+  use_sequence_packing: true
+  optim:
+    lr: 3e-6
+    lr_decay_style: constant
+    lr_warmup_steps_ratio: 0.0
+    weight_decay: 0.01
+    min_lr: 3e-6
+algorithm:
+  mode: opd
+  opd:
+    kl_loss_mode: multi_sample_policy_gradient_kl
+    pg_kl_n_total_samples: 64
+    pg_online_advantage: true
+    pg_clip_eps: 1000000.0
+pipeline:
+  scheduling_mode: fully_async
+  fully_async:
+    staleness_threshold: 4
+eval:
+  freq: 5
+  mode:
+  - post_allgpu
+  before_train: true
+  batch_size: 30
+  n_samples: 4
+  temperature: 1.0
+  run_primary: false
+  max_response_length: 16384
+weight_sync:
+  backend: nccl
+  nccl_timeout_hours: 48

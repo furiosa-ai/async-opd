@@ -1,0 +1,16 @@
+AsyncOPD
+
+Copyright 2025 FuriosaAI
+
+Licensed under the Apache License, Version 2.0.
+
+This project includes implementation ideas and code patterns adapted from or
+inspired by veRL / HybridFlow, an Apache-2.0 licensed reinforcement-learning
+post-training framework for large language models.
+
+Upstream project:
+https://github.com/verl-project/verl
+
+Apache-2.0 attribution notices from upstream sources are preserved where they
+apply. This NOTICE file is informational and does not modify the Apache-2.0
+license terms.

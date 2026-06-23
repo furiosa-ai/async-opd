@@ -1,0 +1,61 @@
+# Example: On-Policy Distillation — Qwen3-30B teacher -> Qwen3-1.7B student
+# Hardware: 8 GPUs (1 teacher, 3 rollout, 4 trainer)
+# Dataset: DeepScaleR math (40K problems)
+# Eval: AIME 2024 Avg@32
+model:
+  path: Qwen/Qwen3-1.7B
+teacher:
+  path: Qwen/Qwen3-30B-A3B-Instruct-2507
+  gpu_ids: '0'
+  scoring_batch_size: 8
+  vllm:
+    tensor_parallel_size: 1
+    n_logprobs: 1
+    max_model_len: 18688
+data:
+  train_files: hf:agentica-org/DeepScaleR-Preview-Dataset
+  val_files: hf:Maxwell-Jia/AIME_2024
+  prompt_template: '{problem}
+
+    Please reason step by step, and put your final answer within \boxed{}.'
+  answer_key: answer
+  enable_thinking: false
+  prompt_key: problem
+  max_prompt_length: 2048
+  max_response_length: 16384
+rollout:
+  gpu_ids: 1,2,3
+  n_gpus: 3
+  temperature: 1.0
+  vllm:
+    max_model_len: 18432
+    max_num_seqs: 512
+trainer:
+  gpu_ids: 4,5,6,7
+  n_gpus: 4
+  batch_size: 256
+  micro_batch_size: 16
+  use_torch_compile: true
+  total_steps: 200
+  total_epochs: 10
+  use_sequence_packing: true
+  optim:
+    lr: 5e-6
+    lr_decay_style: constant
+    weight_decay: 0.01
+algorithm:
+  mode: opd
+  opd:
+    kl_loss_mode: forward_kl
+pipeline:
+  n_step_off:
+    step_off: 2
+eval:
+  freq: 40
+  mode:
+  - post_allgpu
+  before_train: true
+  n_samples: 32
+  temperature: 1.0
+weight_sync:
+  backend: nccl

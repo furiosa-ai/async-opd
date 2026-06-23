@@ -1,0 +1,36 @@
+# Example: SFT — Qwen3-1.7B supervised fine-tuning
+# Hardware: 2+ GPUs (all for trainer, no teacher/rollout needed)
+# Dataset: parquet with (prompt, completion) pairs
+model:
+  path: Qwen/Qwen3-1.7B
+data:
+  train_files: data/train.parquet
+  val_files: data/val.parquet
+  prompt_template: '{problem}'
+  answer_key: answer
+  prompt_key: prompt
+  completion_key: completion
+  max_prompt_length: 2048
+  max_response_length: 4096
+trainer:
+  gpu_ids: 0,1
+  n_gpus: 2
+  batch_size: 64
+  micro_batch_size: 8
+  use_torch_compile: false
+  total_steps: 1000
+  total_epochs: 2
+  optim:
+    lr: 5e-6
+    lr_decay_style: cosine
+    lr_warmup_steps_ratio: 0.05
+    weight_decay: 0.01
+algorithm:
+  mode: sft
+  sft:
+    loss_mode: ce
+eval:
+  freq: 200
+  mode:
+  - perplexity
+  before_train: true

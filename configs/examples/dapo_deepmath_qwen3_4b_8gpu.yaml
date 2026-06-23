@@ -1,0 +1,74 @@
+# DAPO-style GRPO on the local DeepMath difficulty>=6 parquet.
+#
+# This config uses GRPO mode with DAPO-style token-mean loss aggregation,
+# asymmetric/dual clipping knobs, group-relative advantages, and no
+# teacher/reference KL penalty (`kl_beta: 0.0`).
+#
+# Build data/deepmath_difficulty6/train.parquet with the public recipe in
+# docs/configuration.md before running.
+model:
+  path: Qwen/Qwen3-4B-Base
+data:
+  train_files: data/deepmath_difficulty6/train.parquet
+  val_files: hf:Maxwell-Jia/AIME_2024
+  prompt_template: "{problem}\nPlease reason step by step, and put your final answer\
+    \ within \\boxed{{}}."
+  answer_key: answer
+  enable_thinking: false
+  prompt_key: problem
+  max_prompt_length: 2048
+  max_response_length: 16384
+rollout:
+  gpu_ids: "0,1,2,3"
+  n_gpus: 4
+  temperature: 1.0
+  top_p: 1.0
+  top_k: -1
+  vllm:
+    tensor_parallel_size: 1
+    max_model_len: 18432
+    max_num_seqs: 512
+    gpu_memory_utilization: 0.85
+trainer:
+  gpu_ids: "4,5,6,7"
+  n_gpus: 4
+  batch_size: 256
+  micro_batch_size: 2
+  mini_batch_size: 64
+  use_torch_compile: true
+  total_steps: 200
+  total_epochs: 10
+  use_sequence_packing: true
+  optim:
+    lr: 3e-06
+    lr_decay_style: constant
+    lr_warmup_steps_ratio: 0.0
+    weight_decay: 0.1
+    min_lr: 3e-06
+algorithm:
+  mode: grpo
+  grpo:
+    group_size: 8
+    clip_eps: 0.2
+    kl_beta: 0.0
+    loss_agg_mode: token-mean
+    norm_adv_by_std: true
+    filter_groups: false
+    clip_ratio_low: 0.2
+    clip_ratio_high: 0.28
+    clip_ratio_c: 10.0
+    reward_fn: correctness
+pipeline:
+  n_step_off:
+    step_off: 1
+eval:
+  freq: 20
+  mode:
+  - post_allgpu
+  before_train: true
+  batch_size: 30
+  n_samples: 32
+  temperature: 1.0
+weight_sync:
+  backend: nccl
+  nccl_timeout_hours: 48

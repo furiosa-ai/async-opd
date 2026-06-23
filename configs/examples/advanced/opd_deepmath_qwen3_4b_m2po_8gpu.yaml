@@ -1,0 +1,80 @@
+# Advanced OPD example: policy-gradient KL with M2PO dynamic clipping.
+# Uses local DeepMath difficulty>=6 parquet, one teacher GPU, five rollout GPUs, and two FSDP trainer GPUs.
+# Tune pg_m2po_budget only after validating the base policy-gradient KL path.
+model:
+  path: Qwen/Qwen3-4B-Base
+teacher:
+  path: Qwen/Qwen3-30B-A3B-Instruct-2507
+  gpu_ids: '0'
+  n_gpus: 1
+  scoring_batch_size: 8
+  vllm:
+    tensor_parallel_size: 1
+    n_logprobs: 1
+    max_model_len: 18688
+    max_num_seqs: 16
+    gpu_memory_utilization: 0.4
+    enforce_eager: true
+data:
+  train_files: data/deepmath_difficulty6/train.parquet
+  val_files: hf:Maxwell-Jia/AIME_2024
+  prompt_template: '{problem}
+
+    Please reason step by step, and put your final answer within \boxed{{}}.'
+  answer_key: answer
+  enable_thinking: false
+  prompt_key: problem
+  max_prompt_length: 2048
+  max_response_length: 16384
+rollout:
+  gpu_ids: 1,2,3,4,5
+  n_gpus: 5
+  pin_cpu_affinity: true
+  bind_numa_memory: true
+  temperature: 1.0
+  top_p: 1.0
+  top_k: -1
+  vllm:
+    tensor_parallel_size: 1
+    max_model_len: 18432
+    max_num_seqs: 512
+    gpu_memory_utilization: 0.85
+    enforce_eager: false
+trainer:
+  gpu_ids: 6,7
+  n_gpus: 2
+  batch_size: 256
+  micro_batch_size: 8
+  mini_batch_size: 64
+  use_torch_compile: true
+  total_steps: 200
+  total_epochs: 10
+  use_sequence_packing: true
+  optim:
+    lr: 3e-6
+    lr_decay_style: constant
+    lr_warmup_steps_ratio: 0.0
+    weight_decay: 0.01
+    min_lr: 3e-6
+algorithm:
+  mode: opd
+  opd:
+    kl_loss_mode: policy_gradient_kl
+    pg_clip_eps: 0.2
+    pg_m2po_budget: 0.01
+    pg_m2po_miniclip_low: 0.3
+    pg_m2po_miniclip_high: 0.5
+pipeline:
+  n_step_off:
+    step_off: 2
+eval:
+  freq: 20
+  mode:
+  - post_allgpu
+  before_train: true
+  batch_size: 30
+  n_samples: 32
+  temperature: 1.0
+weight_sync:
+  backend: nccl
+  nccl_timeout_hours: 48

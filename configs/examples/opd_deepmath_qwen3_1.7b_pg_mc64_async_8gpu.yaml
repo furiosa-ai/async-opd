@@ -1,0 +1,92 @@
+# Advanced OPD on the local DeepMath difficulty>=6 parquet.
+#
+# Public 8-GPU fully-async layout:
+#   GPU 0: Qwen3 30B teacher/reference
+#   GPU 1-4: rollout workers
+#   GPU 5-7: FSDP trainer
+#
+# Uses multi-sample policy-gradient KL with 64 teacher samples per token,
+# online advantages, an intentionally very large clip epsilon for the
+# unclipped-PG variant, and fully async scheduling with staleness threshold 4.
+#
+# Build data/deepmath_difficulty6/train.parquet with the public recipe in
+# docs/configuration.md before running.
+
+model:
+  path: Qwen/Qwen3-1.7B
+teacher:
+  path: Qwen/Qwen3-30B-A3B-Instruct-2507
+  gpu_ids: '0'
+  n_gpus: 1
+  scoring_batch_size: 8
+  vllm:
+    tensor_parallel_size: 1
+    n_logprobs: 64
+    max_model_len: 18688
+    max_num_seqs: 16
+    gpu_memory_utilization: 0.4
+    enforce_eager: true
+data:
+  train_files: data/deepmath_difficulty6/train.parquet
+  val_files: hf:Maxwell-Jia/AIME_2024
+  prompt_template: '{problem}
+
+    Please reason step by step, and put your final answer within \boxed{{}}.'
+  answer_key: answer
+  enable_thinking: false
+  prompt_key: problem
+  max_prompt_length: 2048
+  max_response_length: 16384
+rollout:
+  gpu_ids: 1,2,3,4
+  n_gpus: 4
+  pin_cpu_affinity: true
+  bind_numa_memory: true
+  temperature: 1.0
+  top_p: 1.0
+  top_k: -1
+  vllm:
+    tensor_parallel_size: 1
+    max_model_len: 18432
+    max_num_seqs: 512
+    gpu_memory_utilization: 0.85
+    enforce_eager: false
+trainer:
+  gpu_ids: 5,6,7
+  n_gpus: 3
+  batch_size: 256
+  micro_batch_size: 8
+  mini_batch_size: 64
+  use_torch_compile: true
+  total_steps: 100
+  total_epochs: 10
+  save_freq: 5
+  use_sequence_packing: true
+  optim:
+    lr: 3e-6
+    lr_decay_style: constant
+    lr_warmup_steps_ratio: 0.0
+    weight_decay: 0.01
+    min_lr: 3e-6
+algorithm:
+  mode: opd
+  opd:
+    kl_loss_mode: multi_sample_policy_gradient_kl
+    pg_kl_n_total_samples: 64
+    pg_online_advantage: true
+    pg_clip_eps: 1000000.0
+pipeline:
+  scheduling_mode: fully_async
+  fully_async:
+    staleness_threshold: 4
+eval:
+  freq: 5
+  mode:
+  - post_allgpu
+  before_train: true
+  batch_size: 30
+  n_samples: 32
+  temperature: 1.0
+weight_sync:
+  backend: nccl
+  nccl_timeout_hours: 48

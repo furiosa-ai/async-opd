@@ -1,0 +1,94 @@
+# Experimental OPD example: fused hybrid sync with colocated FSDP trainer ranks and vLLM rollout replicas.
+# Uses local DeepMath difficulty>=6 parquet, one teacher GPU, and seven fused student GPUs.
+# Start with standard step-off or fully async examples before attempting this specialized scheduler.
+model:
+  path: Qwen/Qwen3-1.7B-Base
+teacher:
+  path: Qwen/Qwen3-30B-A3B-Instruct-2507
+  gpu_ids: '0'
+  n_gpus: 1
+  scoring_batch_size: 8
+  vllm:
+    tensor_parallel_size: 1
+    n_logprobs: 64
+    max_model_len: 18688
+    max_num_seqs: 16
+    gpu_memory_utilization: 0.4
+    enforce_eager: true
+data:
+  train_files: data/deepmath_difficulty6/train.parquet
+  val_files: hf:Maxwell-Jia/AIME_2024
+  prompt_template: '{problem}
+
+    Please reason step by step, and put your final answer within \boxed{{}}.'
+  answer_key: answer
+  enable_thinking: false
+  prompt_key: problem
+  max_prompt_length: 2048
+  max_response_length: 16384
+rollout:
+  gpu_ids: 1,2,3,4,5,6,7
+  n_gpus: 7
+  pin_cpu_affinity: true
+  bind_numa_memory: true
+  temperature: 1.0
+  top_p: 1.0
+  top_k: -1
+  vllm:
+    tensor_parallel_size: 1
+    max_model_len: 18432
+    max_num_seqs: 512
+    gpu_memory_utilization: 0.85
+    enforce_eager: false
+trainer:
+  gpu_ids: 1,2,3,4,5,6,7
+  n_gpus: 7
+  batch_size: 256
+  micro_batch_size: 8
+  mini_batch_size: 64
+  use_torch_compile: true
+  total_steps: 200
+  total_epochs: 10
+  use_sequence_packing: true
+  optim:
+    lr: 3e-6
+    lr_decay_style: constant
+    lr_warmup_steps_ratio: 0.0
+    weight_decay: 0.01
+    min_lr: 3e-6
+algorithm:
+  mode: opd
+  opd:
+    kl_loss_mode: multi_sample_policy_gradient_kl
+    pg_kl_n_total_samples: 64
+    pg_online_advantage: true
+    pg_clip_eps: 1000000.0
+pipeline:
+  scheduling_mode: fused_hybrid_sync
+  n_step_off:
+    step_off: 0
+  fused_hybrid_sync:
+    rollout_parallelism: data_parallel
+    weight_update_backend: bucketed_inprocess
+    debug_full_state_sync: false
+    update_bucket_mb: 256
+    vllm_sleep_level: 2
+    require_vllm_sleep: true
+    verify_weight_checksum: false
+    refresh_policy: after_train
+    allow_teacher_gpu_overlap: false
+    require_multigpu_fsdp: true
+    allow_single_gpu_debug: false
+    log_memory: true
+eval:
+  freq: -1
+  mode:
+  - inline
+  before_train: false
+  batch_size: 30
+  n_samples: 32
+  temperature: 1.0
+weight_sync:
+  backend: cpu
+  verify_checksum: false
+  nccl_timeout_hours: 48
