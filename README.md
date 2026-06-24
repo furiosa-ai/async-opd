@@ -4,6 +4,10 @@ AsyncOPD is a multi-process training pipeline for language-model distillation, r
 
 For full documentation, see the [documentation index](docs/index.md).
 
+## 🔔 Updates
+
+- **May 23, 2026** AsyncOPD is accepted to ICML 2026 DEMO Workshop! 🎉
+
 ## Why AsyncOPD?
 
 AsyncOPD is built around a simple loop: the student model generates its own answers, a stronger teacher/reference model scores them, and the student is updated from that feedback.
@@ -293,7 +297,7 @@ Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 ## Citation
 
 ```bibtex
-@misc{kang2026asyncopdstaleonpolicydistillation,
+@misc{kang2026asyncopd,
   title={AsyncOPD: How Stale Can On-Policy Distillation Be?},
   author={Wonjun Kang and Kevin Galim and Seunghyuk Oh and Minjun Kang and Sanghyun Park and Donghoon Kim and Minjae Lee and Minseo Kim and Rishabh Tiwari and Yuchen Zeng and Hyung Il Koo and Kangwook Lee},
   year={2026},
