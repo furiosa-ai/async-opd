@@ -297,13 +297,10 @@ Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 ## Citation
 
 ```bibtex
-@misc{kang2026asyncopd,
+@article{kang2026asyncopd,
   title={AsyncOPD: How Stale Can On-Policy Distillation Be?},
-  author={Wonjun Kang and Kevin Galim and Seunghyuk Oh and Minjun Kang and Sanghyun Park and Donghoon Kim and Minjae Lee and Minseo Kim and Rishabh Tiwari and Yuchen Zeng and Hyung Il Koo and Kangwook Lee},
-  year={2026},
-  eprint={2606.24143},
-  archivePrefix={arXiv},
-  primaryClass={cs.LG},
-  url={https://arxiv.org/abs/2606.24143},
+  author={Kang, Wonjun and Galim, Kevin and Oh, Seunghyuk and Kang, Minjun and Park, Sanghyun and Kim, Donghoon and Lee, Minjae and Kim, Minseo and Tiwari, Rishabh and Zeng, Yuchen and others},
+  journal={arXiv preprint arXiv:2606.24143},
+  year={2026}
 }
 ```
